@@ -32,7 +32,7 @@ responses = [
 triggers = ['кури', 'топор']
 
 # Global counter variable
-click_count = 0
+smoke_count = 0
 
 @app.on_message(filters.command("start"))
 async def start(client, message):
@@ -74,20 +74,21 @@ async def handle_inline_query(client, inline: InlineQuery):
 
 @app.on_callback_query()
 async def answer(client, cb: CallbackQuery):
-    global click_count  # Access the global counter variable
-
+    global smoke_count
     if cb.data == "smoke":
+        smoke_count += 1
         await cb.answer('Начинаем процесс курения...')
         for response in responses:
             await asyncio.sleep(1)
             await cb.edit_message_text(response)
     elif cb.data == "statistics":
         # Increment and display the click count
-        click_count += 1
-        await cb.answer(f'Вы нажали кнопку "Покурить топор" {click_count} раз.')
+        await cb.answer(f'Вы нажали кнопку "Покурить топор" {smoke_count} раз.')
         
 
 async def smoke_axe(msg: Message):
+    global smoke_count
+    smoke_count += 1
     sent_message = None
     for response in responses:
         if sent_message:
