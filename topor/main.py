@@ -12,6 +12,8 @@ from pyrogram.types import (
     Message,
 )
 import asyncio
+import psutil
+import datetime
 
 app = Client(
     name="sbertopor",
@@ -20,48 +22,97 @@ app = Client(
     bot_token=token,
 )
 
-# List of trigger phrases
-responses = [
-    "Оформляю подписку Cберпрайⷨ ...",
+smoke_count = 0
+responses_ru = [
+    "Оформляю подписку Сберпрайм...",
     "🪓",
     "🪓🪓",
     "🪓🪓🪓",
     "🪓🪓🪓🪓",
     "Топор был выкурен! 🚬",
 ]
-triggers = ['кури', 'топор']
-
-# Global counter variable
-smoke_count = 0
+responses_en = [
+    "Subscribing to Sberprime..."
+    "🪓",
+    "🪓🪓",
+    "🪓🪓🪓",
+    "🪓🪓🪓🪓",
+    "Axe was smoked! 🚬",
+]
 
 @app.on_message(filters.command("start"))
-async def start(client, message):
-    await message.reply("Привет! Саси")
+async def start(
+    client,
+    msg: Message,
+):
+    if msg.from_user.language_code == "ru":
+        await msg.reply("Привет! Саси")
+    else:
+        await msg.reply("Hello! Suck my dick")
+
+
+@app.on_message(filters.command("status"))
+async def status(client, message):
+    cpu_load = psutil.cpu_percent()
+    uptime = datetime.datetime.now() - datetime.datetime.fromtimestamp(psutil.boot_time())
+    cpu_temp = psutil.sensors_temperatures().get('coretemp', [None])[0]
+    if cpu_temp:
+        cpu_temp = cpu_temp.current
+    else:
+        cpu_temp = 'N/A'
+    ram = psutil.virtual_memory()
+    ram_used = ram.used // (1024 ** 2)
+    ram_total = ram.total // (1024 ** 2)
+    uptime_str = str(uptime).split('.')[0]
+    status_message = (
+        f"🖥 cpu load: {cpu_load}%",
+        f"🧠 ram: {ram_used} mib / {ram_total} mib",
+        f"⏱ uptime: {uptime_str}",
+        f"🌡 cpu temp: {cpu_temp}° c",
+    )
+    await message.reply_text("\n".join(status_message))
+
 
 @app.on_message(filters.text)
-async def emoji_sender(client, msg: Message):
+async def emoji_sender(
+    client,
+    msg: Message,
+):
+    triggers_ru = ['кури', 'топор']
+    triggers_en = ['smoke', 'axe']
     if msg.via_bot:
         return
-    for trigger in triggers:
+    for trigger in triggers_ru:
         if trigger in msg.text.lower():
-            await smoke_axe(msg)
+            await smoke_axe(msg, responses_ru)
+            return
+    for trigger in triggers_en:
+        if trigger in msg.text.lower():
+            await smoke_axe(msg, responses_en)
             return
 
 @app.on_inline_query()
 async def handle_inline_query(client, inline: InlineQuery):
-    # Create separate "smoke" and "statistics" buttons
-    smoke_button = Ikb("Покурить топор", "smoke")
-    statistics_button = Ikb("Статистика", "statistics")
+    print(inline.from_user.language_code)
+    if inline.from_user.language_code == "ru":
+        title="Покурить топор"
+        smoke_text = 'Нажми кнопку ниже, чтобы покурить топор'
+        statistics_text = "Статистика"
+    else:
+        title="Smoke axe"
+        smoke_text = 'Press button below to smoke axe'
+        statistics_text = "Stats"
+    smoke_button = Ikb(title, "smoke")
+    statistics_button = Ikb(statistics_text, "statistics")
 
-    # Create an inline keyboard with both buttons
     inline_keyboard = Ikm([[smoke_button, statistics_button]])
 
     await inline.answer(
         results=[
             InlineQueryResultArticle(
-                title='Покурить топор',
+                title=title,
                 input_message_content=InputTextMessageContent(
-                    'Нажми кнопку ниже, чтобы покурить топор',
+                    smoke_text,
                 ),
                 reply_markup=inline_keyboard,
                 thumb_url='https://i.postimg.cc/4dm21qbz/IMG-20231215-115344-720.jpg',
@@ -75,9 +126,15 @@ async def handle_inline_query(client, inline: InlineQuery):
 @app.on_callback_query()
 async def answer(client, cb: CallbackQuery):
     global smoke_count
+    if cb.from_user.language_code == "ru":
+        start_smoking = "Начинаем процесс курения..."
+        responses = responses_ru
+    else:
+        start_smoking = "Starting process of smoking..."
+        responses = responses_en
     if cb.data == "smoke":
         smoke_count += 1
-        await cb.answer('Начинаем процесс курения...')
+        await cb.answer(start_smoking)
         for response in responses:
             await asyncio.sleep(1)
             await cb.edit_message_text(response)
@@ -86,7 +143,10 @@ async def answer(client, cb: CallbackQuery):
         await cb.answer(f'Вы нажали кнопку "Покурить топор" {smoke_count} раз.')
         
 
-async def smoke_axe(msg: Message):
+async def smoke_axe(
+    msg: Message,
+    responses: list[str]
+):
     global smoke_count
     smoke_count += 1
     sent_message = None
@@ -94,7 +154,8 @@ async def smoke_axe(msg: Message):
         if sent_message:
             await msg.reply_chat_action(ChatAction.TYPING)
             await asyncio.sleep(1)
-            await sent_message.delete()
-        sent_message = await msg.reply(response)
+            sent_message = await sent_message.edit_text(response)
+        else:
+            sent_message = await msg.reply(response)
 
 app.run()
