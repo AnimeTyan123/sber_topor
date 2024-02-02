@@ -39,16 +39,28 @@ responses_en = [
     "🪓🪓🪓🪓",
     "Axe was smoked! 🚬",
 ]
+responses_uk = [
+    "Виконую пошук нахрюків..."
+    "🐖",
+    "🐖🪓",
+    "🐖🪓🔥",
+    "🐖🪓🔥🥩",
+    "Нахрюк прокоптився! 🐖➡️🥩",
+]
 
 @app.on_message(filters.command("start"))
 async def start(
     client,
     msg: Message,
 ):
-    if msg.from_user.language_code == "ru":
-        await msg.reply("Привет! Саси")
-    else:
-        await msg.reply("Hello! Suck my dick")
+    lang = msg.from_user.language_code
+    match lang:
+        case 'ru':
+            await msg.reply("Привет! Саси")
+        case 'uk':
+            await msg.reply("Привіт! Сосі")
+        case 'en':
+            await msg.reply("Hello! Suck my dick")
 
 
 @app.on_message(filters.command("status"))
@@ -80,6 +92,7 @@ async def emoji_sender(
 ):
     triggers_ru = ['кури', 'топор']
     triggers_en = ['smoke', 'axe']
+    triggers_uk = ['курi', 'курi']
     if msg.via_bot:
         return
     for trigger in triggers_ru:
@@ -90,18 +103,30 @@ async def emoji_sender(
         if trigger in msg.text.lower():
             await smoke_axe(msg, responses_en)
             return
+        for trigger in triggers_uk:
+            if trigger in msg.text.lower():
+                await smoke_axe(msg, responses_uk)
+            return
 
 @app.on_inline_query()
 async def handle_inline_query(client, inline: InlineQuery):
     print(inline.from_user.language_code)
-    if inline.from_user.language_code == "ru":
-        title="Покурить топор"
-        smoke_text = 'Нажми кнопку ниже, чтобы покурить топор'
-        statistics_text = "Статистика"
-    else:
-        title="Smoke axe"
-        smoke_text = 'Press button below to smoke axe'
-        statistics_text = "Stats"
+    lang = inline.from_user.language_code
+    match lang:
+        case 'ru':
+            title = "Покурить топор"
+            smoke_text = 'Нажми кнопку ниже, чтобы покурить топор'
+            statistics_text = "Статистика"
+        case 'uk':
+            title = "здобути перемогу"
+            smoke_text = 'Натисніть кнопку нижче, щоб покурити сокиру'
+            statistics_text = "Статистика"
+        case _:
+            title = "Smoke axe"
+            smoke_text = 'Press button below to smoke axe'
+            statistics_text = "Stats"
+
+    # Переместите определение кнопок за пределы условного оператора
     smoke_button = Ikb(title, "smoke")
     statistics_button = Ikb(statistics_text, "statistics")
 
@@ -126,12 +151,17 @@ async def handle_inline_query(client, inline: InlineQuery):
 @app.on_callback_query()
 async def answer(client, cb: CallbackQuery):
     global smoke_count
-    if cb.from_user.language_code == "ru":
-        start_smoking = "Начинаем процесс курения..."
-        responses = responses_ru
-    else:
-        start_smoking = "Starting process of smoking..."
-        responses = responses_en
+    lang = cb.from_user.language_code
+    match lang:
+        case 'uk':
+            start_smoking = "Розгортаємо швайнолокатори..."
+            responses = responses_uk
+        case 'ru':
+            start_smoking = "Начинаем процесс курения..."
+            responses = responses_ru
+        case _:
+            start_smoking = "Starting process of smoking..."
+            responses = responses_en
     if cb.data == "smoke":
         smoke_count += 1
         await cb.answer(start_smoking)
